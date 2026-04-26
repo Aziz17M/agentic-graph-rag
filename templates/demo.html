@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentic Graph-RAG 3.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 3em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.2em;
+            font-weight: 400;
+        }
+        
+        .badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .card-icon {
+            font-size: 2em;
+            margin-right: 15px;
+        }
+        
+        .card-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .upload-zone {
+            border: 3px dashed #667eea;
+            padding: 40px;
+            text-align: center;
+            border-radius: 15px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+        
+        .upload-zone:hover {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-color: #764ba2;
+            transform: scale(1.02);
+        }
+        
+        .upload-zone p {
+            font-size: 1.1em;
+            color: #667eea;
+            font-weight: 500;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1em;
+            font-family: 'Inter', sans-serif;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 35px;
+            border-radius: 12px;
+            font-size: 1.05em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            width: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .document-list {
+            display: grid;
+            gap: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        .document-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .document-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .document-list::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+        }
+        
+        .document-item {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .document-item:hover {
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+        
+        .document-item.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        }
+        
+        .document-item strong {
+            display: block;
+            color: #333;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+        
+        .document-meta {
+            font-size: 0.9em;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .result {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            margin-top: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .result h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .answer-box {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            padding: 25px;
+            border-radius: 15px;
+            border-left: 5px solid #667eea;
+            margin-bottom: 25px;
+            line-height: 1.8;
+            font-size: 1.05em;
+        }
+        
+        .metadata {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .meta-item {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .meta-item strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .meta-value {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .chunk {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border-left: 4px solid #764ba2;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .chunk:hover {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .chunk-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .chunk-title {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .score {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+        
+        .chunk-content {
+            color: #555;
+            line-height: 1.6;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(102, 126, 234, 0.1);
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading p {
+            color: #667eea;
+            font-weight: 500;
+            font-size: 1.1em;
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+        
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+        
+        .full-width {
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Agentic Graph-RAG 3.0</h1>
+            <p>Système de Question-Réponse Intelligent avec Architecture Multi-Agents</p>
+            <span class="badge">RAG • FAISS • Multi-Agents • MCP • LLM Local</span>
+        </div>
+        
+        <div class="main-grid">
+            <!-- Section Upload -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-icon">📄</span>
+                    <h2 class="card-title">Importer un Document</h2>
+                </div>
+                
+                <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+                    <p>📁 Cliquez pour sélectionner un fichier PDF ou TXT</p>
+                    <input type="file" id="fileInput" accept=".pdf,.txt">
+                </div>
+                
+                <input type="text" id="docTitle" placeholder="Titre du document (optionnel)">
+                <button onclick="uploadDocument()">⬆️ Indexer le Document</button>
+                <div id="uploadStatus"></div>
+            </div>
+
+            <!-- Section Documents -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-icon">📚</span>
+                    <h2 class="card-title">Documents Indexés</h2>
+                </div>
+                
+                <div class="document-list" id="documentList">
+                    {% for doc in documents %}
+                    <div class="document-item" data-id="{{ doc.id }}" onclick="selectDocument('{{ doc.id }}')">
+                        <strong>{{ doc.title }}</strong>
+                        <div class="document-meta">
+                            <span>📊 {{ doc.chunks.count }} chunks</span>
+                            <span>🕐 {{ doc.uploaded_at|date:"d/m/Y H:i" }}</span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <p>Aucun document indexé</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Section Question -->
+        <div class="card full-width">
+            <div class="card-header">
+                <span class="card-icon">❓</span>
+                <h2 class="card-title">Poser une Question</h2>
+            </div>
+            
+            <textarea id="question" placeholder="Posez votre question sur le document sélectionné..."></textarea>
+            <button onclick="askQuestion()" id="askBtn" disabled>🚀 Lancer le Pipeline RAG</button>
+            <div id="result"></div>
+        </div>
+    </div>
+
+    <script>
+        let selectedDocId = null;
+
+        function selectDocument(docId) {
+            selectedDocId = docId;
+            document.querySelectorAll('.document-item').forEach(el => {
+                el.classList.remove('selected');
+            });
+            document.querySelector(`[data-id="${docId}"]`).classList.add('selected');
+            document.getElementById('askBtn').disabled = false;
+        }
+
+        async function uploadDocument() {
+            const fileInput = document.getElementById('fileInput');
+            const title = document.getElementById('docTitle').value;
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Veuillez sélectionner un fichier');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('document', file);
+            formData.append('title', title || file.name);
+
+            document.getElementById('uploadStatus').innerHTML = '<div class="loading"><div class="spinner"></div><p>Indexation en cours...</p></div>';
+
+            try {
+                const response = await fetch('/upload/', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('uploadStatus').innerHTML = `
+                        <div class="result">
+                            <p class="status-badge status-success">✅ Document indexé avec succès!</p>
+                            <p style="margin-top: 10px; color: #666;">${data.chunks_count} chunks créés</p>
+                        </div>
+                    `;
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    document.getElementById('uploadStatus').innerHTML = `
+                        <p class="status-badge status-error">❌ ${data.error}</p>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('uploadStatus').innerHTML = `
+                    <p class="status-badge status-error">❌ Erreur: ${error.message}</p>
+                `;
+            }
+        }
+
+        async function askQuestion() {
+            const question = document.getElementById('question').value;
+            
+            if (!question || !selectedDocId) {
+                alert('Veuillez sélectionner un document et poser une question');
+                return;
+            }
+
+            document.getElementById('result').innerHTML = '<div class="loading"><div class="spinner"></div><p>Pipeline en cours: Planner → Executor → LLM → Critic...</p></div>';
+
+            const formData = new FormData();
+            formData.append('document_id', selectedDocId);
+            formData.append('question', question);
+
+            try {
+                const response = await fetch('/ask/', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayResult(data);
+                } else {
+                    document.getElementById('result').innerHTML = `
+                        <p class="status-badge status-error">❌ ${data.error}</p>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <p class="status-badge status-error">❌ Erreur: ${error.message}</p>
+                `;
+            }
+        }
+
+        function displayResult(data) {
+            const confidencePercent = (data.confidence * 100).toFixed(1);
+            const validationStatus = data.is_valid ? 
+                '<span class="status-badge status-success">✅ Validé</span>' : 
+                '<span class="status-badge status-warning">⚠️ Non validé</span>';
+            
+            const html = `
+                <div class="result">
+                    <h3>💡 Réponse Générée</h3>
+                    <div class="answer-box">
+                        ${data.answer}
+                    </div>
+                    
+                    <div class="metadata">
+                        <div class="meta-item">
+                            <strong>🎯 Confiance</strong>
+                            <div class="meta-value">${confidencePercent}%</div>
+                        </div>
+                        <div class="meta-item">
+                            <strong>✅ Validation</strong>
+                            <div class="meta-value">${validationStatus}</div>
+                        </div>
+                        <div class="meta-item">
+                            <strong>🔍 Mots-clés</strong>
+                            <div class="meta-value" style="font-size: 1em;">${data.keywords.join(', ')}</div>
+                        </div>
+                        <div class="meta-item">
+                            <strong>🆔 Trace ID</strong>
+                            <div class="meta-value" style="font-size: 0.9em;">${data.trace_id.substring(0, 8)}...</div>
+                        </div>
+                    </div>
+
+                    <h3>📚 Sources Utilisées</h3>
+                    ${data.chunks.map((chunk, i) => `
+                        <div class="chunk">
+                            <div class="chunk-header">
+                                <span class="chunk-title">Source ${i + 1}</span>
+                                <span class="score">${(chunk.score * 100).toFixed(1)}%</span>
+                            </div>
+                            <div class="chunk-content">${chunk.content.substring(0, 300)}...</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            document.getElementById('result').innerHTML = html;
+        }
+    </script>
+</body>
+</html>
