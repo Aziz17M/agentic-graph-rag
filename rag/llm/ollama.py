@@ -35,11 +35,15 @@ class OllamaClient:
         """
         Génère une réponse basée sur les chunks récupérés
         """
-        context = "Contexte extrait du document:\n\n"
+        context = "=== CONTEXTE DU DOCUMENT ===\n\n"
         for i, chunk in enumerate(chunks, 1):
             context += f"[Source {i}] {chunk['content']}\n\n"
         
-        context += "Instructions: Réponds à la question en te basant UNIQUEMENT sur le contexte ci-dessus. "
-        context += "Cite les sources utilisées ([Source X])."
+        context += "=== INSTRUCTIONS ===\n"
+        context += "1. Réponds à la question en utilisant UNIQUEMENT les informations du contexte ci-dessus\n"
+        context += "2. Cite les sources utilisées en mentionnant [Source X]\n"
+        context += "3. Si l'information n'est pas dans le contexte, dis 'L'information n'est pas disponible dans le document'\n"
+        context += "4. Sois précis et concis (2-4 phrases maximum)\n"
+        context += "5. Utilise les termes exacts du document quand c'est pertinent\n\n"
         
         return self.generate(question, context)
