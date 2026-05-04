@@ -1,6 +1,5 @@
 # Agentic Graph-RAG 3.0
 
-## Projet Universitaire - Tunis
 
 Système de Question-Réponse Intelligent avec Architecture Multi-Agents, Graph Retrieval et MCP Protocol
 
@@ -329,17 +328,6 @@ ollama pull llama3.2:1b
 
 ---
 
-## Équipe
-
-Projet universitaire réalisé par 5 étudiants à Tunis
-
----
-
-## Licence
-
-Projet universitaire - Usage éducatif uniquement
-
----
 
 ## Points Forts
 
@@ -369,7 +357,3 @@ Projet universitaire - Usage éducatif uniquement
 | Dynamic tool usage | ✅ DONE | MCP tool selection (vector/graph/hybrid) |
 
 ---
-
-**Le système est prêt. Bonne présentation ! 🚀**
-
-**Voir UPGRADE_SUMMARY.md pour les détails techniques de l'upgrade.**
