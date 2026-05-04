@@ -414,7 +414,7 @@
         <div class="header">
             <h1>🤖 Agentic Graph-RAG 3.0</h1>
             <p>Système de Question-Réponse Intelligent avec Architecture Multi-Agents</p>
-            <span class="badge">RAG • FAISS • Multi-Agents • MCP • LLM Local</span>
+            <span class="badge">Graph-RAG • Hybrid Retrieval • Multi-Agents • MCP Protocol • LLM Local</span>
         </div>
         
         <div class="main-grid">
@@ -518,7 +518,10 @@
                     document.getElementById('uploadStatus').innerHTML = `
                         <div class="result">
                             <p class="status-badge status-success">✅ Document indexé avec succès!</p>
-                            <p style="margin-top: 10px; color: #666;">${data.chunks_count} chunks créés</p>
+                            <p style="margin-top: 10px; color: #666;">
+                                📊 ${data.chunks_count} chunks créés<br>
+                                🕸️ ${data.graph_nodes} entités | ${data.graph_edges} relations
+                            </p>
                         </div>
                     `;
                     setTimeout(() => location.reload(), 1500);
@@ -580,9 +583,12 @@
                 '<span class="status-badge status-success">✅ Validé</span>' : 
                 '<span class="status-badge status-warning">⚠️ Non validé</span>';
             
+            const mcpBadge = data.mcp_used ? 
+                '<span class="badge" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">🔗 MCP Protocol</span>' : '';
+            
             const html = `
                 <div class="result">
-                    <h3>💡 Réponse Générée</h3>
+                    <h3>💡 Réponse Générée ${mcpBadge}</h3>
                     <div class="answer-box">
                         ${data.answer}
                     </div>
@@ -597,25 +603,44 @@
                             <div class="meta-value">${validationStatus}</div>
                         </div>
                         <div class="meta-item">
-                            <strong>🔍 Mots-clés</strong>
-                            <div class="meta-value" style="font-size: 1em;">${data.keywords.join(', ')}</div>
+                            <strong>🔍 Méthode</strong>
+                            <div class="meta-value">${data.retrieval_method || 'hybrid'}</div>
+                        </div>
+                        <div class="meta-item">
+                            <strong>🔑 Mots-clés</strong>
+                            <div class="meta-value" style="font-size: 0.9em;">${data.keywords.join(', ')}</div>
                         </div>
                         <div class="meta-item">
                             <strong>🆔 Trace ID</strong>
-                            <div class="meta-value" style="font-size: 0.9em;">${data.trace_id.substring(0, 8)}...</div>
+                            <div class="meta-value" style="font-size: 0.8em;">${data.trace_id.substring(0, 8)}...</div>
                         </div>
+                        ${data.mcp_session ? `
+                        <div class="meta-item">
+                            <strong>🔗 MCP Session</strong>
+                            <div class="meta-value" style="font-size: 0.8em;">${data.mcp_session.session_id.substring(0, 8)}...</div>
+                        </div>
+                        ` : ''}
                     </div>
 
-                    <h3>📚 Sources Utilisées</h3>
-                    ${data.chunks.map((chunk, i) => `
+                    <h3>📚 Sources Utilisées (Hybrid: Vector + Graph)</h3>
+                    ${data.chunks.map((chunk, i) => {
+                        const vectorScore = chunk.vector_score ? (chunk.vector_score * 100).toFixed(1) : 'N/A';
+                        const graphScore = chunk.graph_score ? (chunk.graph_score * 100).toFixed(1) : 'N/A';
+                        const method = chunk.method || 'hybrid';
+                        
+                        return `
                         <div class="chunk">
                             <div class="chunk-header">
-                                <span class="chunk-title">Source ${i + 1}</span>
+                                <span class="chunk-title">Source ${i + 1} <small style="opacity: 0.7;">[${method}]</small></span>
                                 <span class="score">${(chunk.score * 100).toFixed(1)}%</span>
                             </div>
                             <div class="chunk-content">${chunk.content.substring(0, 300)}...</div>
+                            <div style="margin-top: 10px; font-size: 0.85em; color: #666;">
+                                📊 Vector: ${vectorScore}% | 🕸️ Graph: ${graphScore}%
+                            </div>
                         </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
             `;
             document.getElementById('result').innerHTML = html;

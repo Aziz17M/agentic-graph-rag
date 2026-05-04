@@ -34,8 +34,11 @@ def upload_document(request):
             text = extract_text(doc.file_path.path)
             
             # Découpage en chunks
-            retriever = VectorRetriever(str(doc.id))
-            chunks = retriever.create_chunks(text, chunk_size=500)
+            from rag.retrieval.hybrid import HybridRetriever
+            retriever = HybridRetriever(str(doc.id))
+            from rag.retrieval.vector import VectorRetriever
+            vector_ret = VectorRetriever(str(doc.id))
+            chunks = vector_ret.create_chunks(text, chunk_size=500)
             
             # Sauvegarde des chunks en DB
             for i, chunk_text in enumerate(chunks):
@@ -45,16 +48,21 @@ def upload_document(request):
                     chunk_index=i
                 )
             
-            # Indexation FAISS
-            retriever.index_chunks(chunks)
+            # Indexation Hybrid (Vector + Graph)
+            retriever.index_document(chunks)
             doc.indexed = True
             doc.save()
+            
+            # Get graph stats
+            graph_stats = retriever.graph_retriever.get_graph_stats()
             
             return JsonResponse({
                 'success': True,
                 'document_id': str(doc.id),
                 'title': doc.title,
-                'chunks_count': len(chunks)
+                'chunks_count': len(chunks),
+                'graph_nodes': graph_stats['nodes'],
+                'graph_edges': graph_stats['edges']
             })
         except Exception as e:
             return JsonResponse({
@@ -81,28 +89,40 @@ def ask_question(request):
             doc = get_object_or_404(Document, id=document_id)
             trace_id = str(uuid.uuid4())
             
-            # Étape 1: Planner
-            planner = PlannerAgent()
-            mcp_planner = MCPTools.create_planner_call(question, trace_id)
-            plan_result = planner.analyze(question)
+            # Initialize MCP Client
+            from rag.mcp.client import MCPClient
+            mcp_client = MCPClient()
             
-            # Étape 2: Executor
-            executor = ExecutorAgent(document_id)
-            mcp_executor = MCPTools.create_executor_call(
-                plan_result['keywords'], 
-                question, 
-                trace_id
+            # Étape 1: Planner (via MCP)
+            mcp_planner_response = mcp_client.call_tool(
+                tool_name="analyze_question",
+                arguments={"question": question},
+                context={"trace_id": trace_id, "step": 1}
             )
-            exec_result = executor.retrieve(question, plan_result['keywords'])
+            plan_result = mcp_planner_response["result"]["content"]
+            
+            # Étape 2: Executor (Hybrid Retrieval via MCP)
+            executor = ExecutorAgent(document_id, use_mcp=True)
+            exec_result = executor.retrieve(
+                question, 
+                plan_result['keywords'],
+                method='hybrid'  # Use hybrid retrieval
+            )
             
             # Étape 3: LLM Generation
             ollama = OllamaClient()
             answer = ollama.generate_with_chunks(question, exec_result['chunks'])
             
-            # Étape 4: Critic
-            critic = CriticAgent()
-            mcp_critic = MCPTools.create_critic_call(answer, exec_result['chunks'], trace_id)
-            validation = critic.validate(answer, exec_result['chunks'])
+            # Étape 4: Critic (via MCP)
+            mcp_critic_response = mcp_client.call_tool(
+                tool_name="validate_answer",
+                arguments={
+                    "answer": answer,
+                    "chunks": exec_result['chunks']
+                },
+                context={"trace_id": trace_id, "step": 3}
+            )
+            validation = mcp_critic_response["result"]["content"]
             
             # Sauvegarde du log
             query_log = QueryLog.objects.create(
@@ -112,7 +132,10 @@ def ask_question(request):
                 reformulated_question=plan_result['reformulated'],
                 retrieved_chunks=[{
                     'content': c['content'][:200] + '...',
-                    'score': c['score']
+                    'score': c['score'],
+                    'vector_score': c.get('vector_score', 0),
+                    'graph_score': c.get('graph_score', 0),
+                    'method': c.get('method', 'hybrid')
                 } for c in exec_result['chunks']],
                 answer=answer,
                 confidence_score=validation['confidence'],
@@ -127,7 +150,10 @@ def ask_question(request):
                 'is_valid': validation['is_valid'],
                 'chunks': exec_result['chunks'],
                 'keywords': plan_result['keywords'],
-                'reformulated': plan_result['reformulated']
+                'reformulated': plan_result['reformulated'],
+                'retrieval_method': exec_result['method'],
+                'mcp_used': True,
+                'mcp_session': mcp_client.get_session_info()
             })
         except Exception as e:
             return JsonResponse({

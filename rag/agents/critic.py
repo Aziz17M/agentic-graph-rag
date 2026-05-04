@@ -55,7 +55,20 @@ class CriticAgent:
         avg_keyword_overlap = sum(keyword_overlaps) / len(keyword_overlaps) if keyword_overlaps else 0.0
         
         # Critère 3: Score FAISS moyen (pertinence des chunks)
-        avg_faiss_score = sum(c['score'] for c in chunks) / len(chunks)
+        # IMPORTANT: Normaliser les scores FAISS qui peuvent être négatifs ou > 1
+        faiss_scores = []
+        for c in chunks:
+            score = c.get('score', 0)
+            # Si le score est un score hybride (0-1), l'utiliser directement
+            # Sinon, normaliser avec sigmoid pour ramener dans [0, 1]
+            if 0 <= score <= 1:
+                faiss_scores.append(score)
+            else:
+                # Normalisation sigmoid pour scores FAISS bruts
+                normalized = 1 / (1 + abs(score)) if score < 0 else min(score, 1.0)
+                faiss_scores.append(normalized)
+        
+        avg_faiss_score = sum(faiss_scores) / len(faiss_scores) if faiss_scores else 0.0
         
         # Critère 4: Détection de phrases d'erreur
         error_phrases = [
@@ -84,7 +97,7 @@ class CriticAgent:
         
         return {
             'is_valid': is_valid,
-            'confidence': round(min(confidence, 1.0), 3),
+            'confidence': round(min(max(confidence, 0.0), 1.0), 3),  # Clamp entre 0 et 1
             'keyword_overlap': round(avg_keyword_overlap, 3),
             'faiss_score': round(avg_faiss_score, 3),
             'reason': 'Validation réussie' if is_valid else 'Confiance insuffisante ou erreur détectée'
